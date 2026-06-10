@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pesos Inteligente TF</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Pesos Foto">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1088/1088537.png">
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --accent: #10b981;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --border: #e2e8f0;
+        }
+        
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom) 12px;
+            color: var(--text);
+        }
+
+        .header {
+            padding: 16px 4px 8px 4px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 { font-size: 20px; margin: 0; color: var(--primary); font-weight: 700; }
+
+        .scan-section {
+            background: var(--surface);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .btn-camera {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+            cursor: pointer;
+        }
+
+        .btn-camera:active { background: #059669; }
+
+        #fileInput { display: none; }
+
+        #statusText {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .config-card {
+            background: var(--surface);
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        label { font-size: 14px; font-weight: 600; color: #475569; }
+
+        select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background-color: #f1f5f9;
+            color: var(--text);
+        }
+
+        .table-wrapper {
+            background: var(--surface);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 110px;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { background: var(--primary); color: white; font-size: 12px; font-weight: 600; padding: 10px 4px; }
+        td { border-bottom: 1px solid var(--border); padding: 6px 4px; text-align: center; }
+        .row-num { font-weight: 700; color: #64748b; background: #f1f5f9; font-size: 13px; width: 32px; }
+
+        .inputs-container { display: flex; flex-direction: column; gap: 4px; }
+        .input-row { display: flex; align-items: center; gap: 2px; }
+        .input-row span { font-size: 10px; color: #94a3b8; width: 18px; text-align: left; }
+
+        input {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px;
+            text-align: center;
+            font-size: 15px;
+            background: #fafafa;
+        }
+
+        .row-avg { font-size: 12px; font-weight: 700; color: #1e293b; background: #f8fafc; width: 55px; }
+
+        .footer-sticky {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border);
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom)) 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+        }
+
+        .results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+        .result-item { background: #f1f5f9; padding: 6px; border-radius: 8px; }
+        .result-item span { font-size: 10px; color: #64748b; display: block; font-weight: 500; }
+        .result-item strong { font-size: 15px; color: var(--text); }
+
+        .btn-calc {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Escáner de Pesos</h1>
+    </div>
+
+    <div class="scan-section">
+        <button class="btn-camera" onclick="triggerCamera()">
+            📸 Tomar Foto a la Hoja
+        </button>
+        <input type="file" id="fileInput" accept="image/*" capture="environment" onchange="processImage(event)">
+        <div id="statusText">Listo para escanear</div>
+    </div>
+
+    <div class="config-card">
+        <label for="colsCount">Muestras activas:</label>
+        <select id="colsCount" onchange="buildGrid()">
+            <option value="3">M1 - M3</option>
+            <option value="4" selected>M1 - M4</option>
+            <option value="5">M1 - M5</option>
+        </select>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr id="tableHead"></tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="footer-sticky">
+        <div class="results-grid">
+            <div class="result-item"><span>ARR</span><strong id="resUp">-</strong></div>
+            <div class="result-item"><span>ABJ</span><strong id="resDown">-</strong></div>
+            <div class="result-item"><span>TOTAL</span><strong id="resTotal" style="color: #1e3a8a;">-</strong></div>
+        </div>
+        <button class="btn-calc" onclick="runCalculations()">Calcular Lote</button>
+    </div>
+
+<script>
+    const totalRows = 10;
+
+    function triggerCamera() {
+        document.getElementById('fileInput').click();
+    }
+
+    function buildGrid() {
+        const cols = parseInt(document.getElementById('colsCount').value);
+        const head = document.getElementById('tableHead');
+        const body = document.getElementById('tableBody');
+
+        let headHtml = '<th class="row-num">F</th>';
+        for(let i=1; i<=cols; i++) { headHtml += `<th>M${i}</th>`; }
+        headHtml += '<th>P.Ar</th><th>P.Ab</th>';
+        head.innerHTML = headHtml;
+
+        let bodyHtml = '';
+        for(let r=1; r<=totalRows; r++) {
+            bodyHtml += `<tr><td class="row-num">${r}</td>`;
+            for(let c=1; c<=cols; c++) {
+                bodyHtml += `
+                    <td>
+                        <div class="inputs-container">
+                            <div class="input-row"><span>Ar</span><input type="number" class="val-u" data-r="${r}" data-c="${c}"></div>
+                            <div class="input-row"><span>Ab</span><input type="number" class="val-d" data-r="${r}" data-c="${c}"></div>
+                        </div>
+                    </td>`;
+            }
+            bodyHtml += `<td class="row-avg" id="avg-u-${r}">-</td>`;
+            bodyHtml += `<td class="row-avg" id="avg-d-${r}">-</td></tr>`;
+        }
+        body.innerHTML = bodyHtml;
+    }
+
+    // Procesamiento OCR inteligente de la imagen
+    async function processImage(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const status = document.getElementById('statusText');
+        status.innerHTML = "⏳ Procesando imagen e identificando números...";
+        status.style.color = "#3b82f6";
+
+        try {
+            // Inicializar Tesseract para buscar solo números de 3 dígitos (como 200, 300, 430)
+            const worker = await Tesseract.createWorker('eng');
+            await worker.setParameters({
+                tessedit_char_whitelist: '0123456789',
+            });
+            
+            const { data: { text } } = await worker.recognize(file);
+            await worker.terminate();
+
+            // Extraer todos los números válidos detectados de 3 dígitos
+            const numbers = text.match(/\b\d{3}\b/g);
+
+            if (!numbers || numbers.length === 0) {
+                status.innerHTML = "❌ No se detectaron números claros. Intenta con más luz.";
+                status.style.color = "#ef4444";
+                return;
+            }
+
+            // Rellenar automáticamente la cuadrícula alternando Arriba y Abajo
+            const inputsUp = document.querySelectorAll('.val-u');
+            const inputsDown = document.querySelectorAll('.val-d');
+            
+            let numIdx = 0;
+            const maxCells = Math.min(inputsUp.length, Math.floor(numbers.length / 2));
+
+            // Limpiar datos anteriores
+            document.querySelectorAll('input[type="number"]').forEach(i => i.value = '');
+
+            for (let i = 0; i < maxCells; i++) {
+                if(numIdx < numbers.length) inputsUp[i].value = numbers[numIdx++];
+                if(numIdx < numbers.length) inputsDown[i].value = numbers[numIdx++];
+            }
+
+            status.innerHTML = `✅ ¡Escaneo exitoso! Se cargaron ${maxCells * 2} registros.`;
+            status.style.color = var(--accent);
+            
+            // Ejecutar cálculos automáticamente después de cargar los datos
+            runCalculations();
+
+        } catch (error) {
+            status.innerHTML = "❌ Error al procesar la foto.";
+            status.style.color = "#ef4444";
+            console.error(error);
+        }
+    }
+
+    function runCalculations() {
+        const cols = parseInt(document.getElementById('colsCount').value);
+        let sUp = 0, cUp = 0, sDown = 0, cDown = 0;
+
+        for(let r=1; r<=totalRows; r++) {
+            let rSUp = 0, rCUp = 0, rSDown = 0, rCDown = 0;
+
+            for(let c=1; c<=cols; c++) {
+                const inUp = document.querySelector(`.val-u[data-r="${r}"][data-c="${c}"]`);
+                const inDn = document.querySelector(`.val-d[data-r="${r}"][data-c="${c}"]`);
+
+                const vU = parseFloat(inUp.value);
+                const vD = parseFloat(inDn.value);
+
+                if(!isNaN(vU)) { rSUp += vU; rCUp++; sUp += vU; cUp++; }
+                if(!isNaN(vD)) { rSDown += vD; rCDown++; sDown += vD; cDown++; }
+            }
+
+            document.getElementById(`avg-u-${r}`).innerText = rCUp > 0 ? (rSUp/rCUp).toFixed(1) : '-';
+            document.getElementById(`avg-d-${r}`).innerText = rCDown > 0 ? (rSDown/rCDown).toFixed(1) : '-';
+        }
+
+        const finalUp = cUp > 0 ? (sUp/cUp) : 0;
+        const finalDown = cDown > 0 ? (sDown/cDown) : 0;
+        const totalElements = cUp + cDown;
+        const finalTotal = totalElements > 0 ? ((sUp + sDown)/totalElements) : 0;
+
+        document.getElementById('resUp').innerText = finalUp > 0 ? finalUp.toFixed(2) : '-';
+        document.getElementById('resDown').innerText = finalDown > 0 ? finalDown.toFixed(2) : '-';
+        document.getElementById('resTotal').innerText = finalTotal > 0 ? finalTotal.toFixed(2) : '-';
+    }
+
+    window.onload = buildGrid;
+</script>
+</body>
+</html>
